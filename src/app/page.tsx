@@ -42,7 +42,7 @@ export default async function Home() {
           </Link>
           <small>
             {user
-              ? "You’re signed in. League connections are coming next."
+              ? "You’re signed in. Sleeper league importing is ready."
               : "Start with your account. Bring your league next."}
           </small>
         </div>
