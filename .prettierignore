@@ -1,0 +1,7 @@
+node_modules
+.next
+dist
+.wrangler
+package-lock.json
+supabase/config.toml
+next-env.d.ts
