@@ -1,33 +1,59 @@
-# Phase 1 architecture
+# CommishHQ architecture through Phase 2
 
-Scope: foundation only. No league importer, team claiming endpoint, ballots, push delivery, recap generation, or scheduled jobs are implemented.
+## Scope
 
-1. **Next.js App Router + strict TypeScript.** Server Components render pages. Small client components handle navigation, authentication forms, and service-worker registration. Zod validates auth input, configuration, and normalized domain data.
-2. **Supabase Auth + Postgres.** Password sign-in, signup with email confirmation, PKCE callback and logout use server actions/routes. The proxy refreshes cookies; protected pages independently verify users with `getUser()`. Next.js Server Actions provide origin checking. Never use `getSession()` or editable metadata for authorization. Enable Supabase Turnstile CAPTCHA and email rate limits for public signup. No service-role key is needed in Phase 1.
-3. **RLS first.** Profiles are private. League reads require membership or the authoritative commissioner foreign key. An internal, fixed-search-path security-definer function avoids recursive membership policies; only authenticated users can execute it, and it derives identity from `auth.uid()`. No client writes to leagues, connections, teams or memberships. The profile creation trigger ignores untrusted metadata. Membership uniqueness and composite foreign keys prevent duplicate or cross-league team ownership. Multi-team exceptions are intentionally not enabled yet.
-4. **Provider boundary.** A league-scoped `FantasyProvider` returns validated internal models. External identifiers are strings; scores may be unknown rather than fabricated zeroes. Implement Sleeper schemas/client/mapper/adapter only in Phase 2. No provider-specific response types enter React.
-5. **Cloudflare runtime.** Current Cloudflare documentation recommends vinext. Both standard Next.js and vinext builds are retained. vinext remains beta; keep both builds and a deployed authentication smoke test as release gates. Authenticated responses use private/no-store and no CDN, KV, R2 or image service bindings are enabled. Run builds sequentially because both generate `.next/types`.
-6. **PWA foundation.** Manifest, local PNG icons, standalone mode, and a static offline fallback. Service worker never caches authenticated pages or API responses. Web Push handlers and opt-in are deferred to Phase 4.
-7. **Testing.** Vitest runs validation tests and real Postgres SQL through PGlite, with only Supabase's auth roles/schema simulated. Tests require no credentials. Hosted Supabase Auth, email delivery, Turnstile and deployed Workers still need integration smoke testing with your configured services.
+CommishHQ is intentionally not a replacement fantasy platform. The current codebase provides account/authentication foundations plus a trustworthy Sleeper league and manager/team identity layer. Trade voting, Web Push, weekly recaps, Yahoo, and ESPN are still future phases.
 
-## Future phases (not implemented)
+## Application architecture
 
-Phase 2 adds imports, provider sync, and commissioner-approved team identity. Phase 3 adds atomic ballot RPCs and separate anonymous eligibility/choice records. Phase 4 adds standards-based Web Push. Phase 5 adds deterministic recap facts, vocabulary cooldowns, and a separate Cloudflare Cron Worker with transactional idempotency. Do not enable Cron before these jobs exist. Voting security, concurrency and recap scheduling tests belong to those implementations, not speculative Phase 1 stubs.
+1. **Next.js App Router + strict TypeScript.** Server Components render data-heavy pages. Server Actions handle authenticated mutations. Small client components are limited to interaction that requires browser state.
+2. **Provider boundary.** `FantasyProvider` exposes normalized league/member/team/matchup/settings models. Sleeper schemas, raw response types, HTTP errors, and mapping rules live only under `src/lib/fantasy/providers/sleeper/`.
+3. **Sleeper sync.** `syncSleeperLeague` fetches and validates provider data, normalizes it, then upserts by stable provider IDs. Sync status and run records make partial failures visible without treating them as a successful refresh.
+4. **Supabase Auth + Postgres.** The user-scoped SSR client verifies sessions with `getUser()`. A separate server-only admin client uses the Supabase secret key only after application authorization has been established.
+5. **RLS first.** Public-schema tables remain RLS protected. Browser clients cannot directly insert/update authoritative league membership or team assignment.
+6. **Commissioner-approved claims.** A pending team claim is not membership. Approval is atomic in Postgres; partial unique indexes and composite foreign keys prevent duplicate managers, duplicate team ownership, and cross-league assignments.
+7. **Cloudflare deployment.** The Phase 1 vinext/Workers path remains unchanged. No paid bindings or cron jobs are required for Phase 2.
+8. **PWA foundation.** The service worker still caches only the static offline page. Push delivery is deliberately deferred to Phase 4.
 
-## Security review
+## Identity and authorization model
 
-- No service-role key, auth token, password or push key is logged or committed.
-- OAuth/provider secrets have no storage in the public connections table.
-- No self-service league membership or ownership elevation route exists.
-- Profile UPDATE is column-scoped with both USING and WITH CHECK policies.
-- Public pages contain only onboarding/feature descriptions. `/settings` requires a server-verified session.
-- No user HTML rendering, unsafe redirect targets, shared auth cache, or mock league data.
-- Email confirmation and CAPTCHA must be enabled in the hosted Supabase project; local development deliberately permits CAPTCHA-free testing.
-- Apply future migrations through source control, never manual production schema edits.
+There are three separate identities and they must not be conflated:
 
-## Official references checked
+- **Supabase user** — authenticated CommishHQ account
+- **Sleeper provider user** — imported, untrusted provider identity/reference
+- **CommishHQ league/team membership** — authoritative application relationship created only after commissioner approval
 
-- [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)
-- [vinext](https://github.com/cloudflare/vinext)
-- [Supabase server-side authentication](https://supabase.com/docs/guides/auth/server-side/creating-a-client)
-- [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
+Entering a Sleeper username or appearing as a Sleeper roster owner does not automatically authorize a CommishHQ account.
+
+The user who first imports a league becomes its CommishHQ commissioner. The server derives the authenticated user from the session; it never accepts a client-supplied user ID as proof of identity.
+
+## Server-only Supabase client
+
+The server admin client exists because imports must write authoritative provider data and claim approval must create memberships without granting broad table writes to every authenticated browser.
+
+Rules:
+- Prefer `SUPABASE_SECRET_KEY`.
+- Legacy `SUPABASE_SERVICE_ROLE_KEY` is fallback-only.
+- Never prefix these with `NEXT_PUBLIC_`.
+- Never pass the admin client into React Client Components.
+- Authenticate the requester with the normal SSR client first.
+- Treat the admin client as a persistence mechanism, not as authorization.
+
+## Sleeper data rules
+
+- Responses are parsed through Zod before mapping.
+- League IDs remain opaque external strings.
+- Sleeper `fpts_decimal` fields are hundredths: `143 + 52/100 = 143.52`.
+- Matchup opponents are paired by `matchup_id`, never response array order.
+- Current NFL week is used only when the league season matches the NFL state season.
+- Standings currently sort by winning percentage, then points for, then stable provider team ID. This is deliberately not an attempt to replicate every custom Sleeper playoff tiebreaker.
+
+## Phase boundaries
+
+Phase 3 will build secure hidden-result trade ballots on top of the approved `league_members.team_id` identity.
+
+Phase 4 will add standards-based Web Push.
+
+Phase 5 will add deterministic recap facts, vocabulary cooldowns, Tuesday scheduling, and personalized recap notifications.
+
+Do not add those behaviors to Phase 2.

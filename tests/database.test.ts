@@ -24,7 +24,7 @@ async function asUser<T>(user: string, fn: () => Promise<T>): Promise<T> {
 beforeAll(async () => {
   db = new PGlite();
   // Only Supabase's auth schema/roles are simulated. All application SQL runs unchanged in Postgres.
-  await db.exec(`create role anon; create role authenticated; create schema auth;
+  await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
     create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth to authenticated;

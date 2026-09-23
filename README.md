@@ -1,10 +1,12 @@
 # CommishHQ
 
-A focused fantasy football commissioner app. **Phase 1 only**: authentication, a responsive four-area shell, database/RLS foundation, normalized provider contracts, PWA foundation and Cloudflare deployment configuration. No fake league data or working later-phase controls.
+CommishHQ is a focused fantasy-football commissioner app. The current implementation includes the Phase 1 foundation plus **Phase 2 Sleeper league import and commissioner-approved team claiming**.
+
+The product intentionally stays narrow: league connection/identity now, secure trade voting in Phase 3, Web Push in Phase 4, and weekly recaps in Phase 5. Yahoo and ESPN remain future provider adapters.
 
 ## Local setup
 
-Requires Node.js 22.12+ and npm. Docker Desktop is needed only for the full local Supabase stack; unit/database tests do not require Docker or credentials.
+Requires Node.js 22.12+ and npm. Docker Desktop is needed only for the full local Supabase stack; unit/database tests use PGlite and do not require production credentials.
 
 ```sh
 npm ci
@@ -12,30 +14,65 @@ npx supabase start
 npx supabase db reset
 ```
 
-Copy `.env.example` to `.env.local`. Use the URL and publishable (or local legacy anon) key shown by `npx supabase status`. Do not use the service-role key. Set `APP_URL=http://localhost:3000`.
+Copy `.env.example` to `.env.local`. Use the URL and publishable key shown by `npx supabase status`. For Phase 2 server-only import and claim operations, also configure a Supabase secret key. Prefer the modern `SUPABASE_SECRET_KEY`; `SUPABASE_SERVICE_ROLE_KEY` is accepted only as a legacy fallback.
 
 ```sh
 npm run dev
 ```
 
-Open http://localhost:3000. Without environment configuration the onboarding shell still works and account access displays a setup message; it does not pretend to be authenticated. Local Supabase mail is available in its printed Mailpit URL. Email confirmation is enabled locally; follow the signup link in Mailpit before signing in.
+Open http://localhost:3000.
 
 ## Environment variables
 
-| Variable                               | Purpose                                                               |
-| -------------------------------------- | --------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`             | Supabase project URL                                                  |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Public project key; never a service-role/secret key                   |
-| `APP_URL`                              | Exact canonical app origin for confirmation redirects                 |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY`       | Turnstile public site key; optional locally, required for public beta |
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Public Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Browser-safe publishable key |
+| `SUPABASE_URL` | Server-side Supabase URL; may match the public URL |
+| `SUPABASE_SECRET_KEY` | Preferred server-only Supabase secret key for trusted sync/claim operations |
+| `SUPABASE_SERVICE_ROLE_KEY` | Legacy fallback for local/older Supabase projects |
+| `APP_URL` | Canonical application origin for auth redirects |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile site key; optional locally |
 
-Public variables must be supplied at build time. `APP_URL` must also be supplied to the deployed Worker as a runtime variable. The Turnstile **secret is configured in Supabase Auth CAPTCHA settings**, not exposed to this app. Supabase verifies CAPTCHA tokens for sign-in/signup. Ballot-level Turnstile verification belongs to Phase 3.
+Never expose `SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY` through `NEXT_PUBLIC_*`, browser code, logs, or committed files. The normal authenticated Supabase client still verifies the user first; the admin client is isolated in `src/lib/supabase/admin.ts` and is used only by server code.
+
+## Phase 2: Sleeper
+
+A signed-in commissioner can open `/leagues/new`, enter a Sleeper League ID, and import:
+
+- league identity and season
+- teams and Sleeper managers
+- records, points for, and points against
+- current Sleeper/NFL week when the seasons match
+- current-week matchups
+
+Sleeper responses are validated with Zod before normalization. Provider-specific payloads stay inside `src/lib/fantasy/providers/sleeper/`.
+
+The sync is idempotent by provider/external identifiers. Re-importing the same Sleeper league updates existing records instead of creating duplicate teams or matchups. A league is marked `syncing`, `complete`, or `failed` and each run is recorded in `sync_runs`.
+
+### Team claiming
+
+The league importer becomes the initial CommishHQ commissioner. A manager can request a team from `/leagues/<leagueId>/claim`; a pending request grants no league identity or future voting permission.
+
+The commissioner reviews requests at `/leagues/<leagueId>/claims`. Approval runs through a server-only Postgres function and database uniqueness constraints enforce:
+
+- at most one approved team per manager per league
+- at most one approved primary manager per team
+- no cross-league team assignment
+- no browser-side direct membership elevation
+
+The public application does not trust a Sleeper username as proof of ownership.
 
 ## Database
 
-`supabase/migrations/20260923195759_foundation.sql` creates profiles, leagues, league_connections, teams and league_members, plus indexes, foreign keys, constrained team ownership, timestamps, profile trigger and RLS. The migration is exercised unchanged by `tests/database.test.ts` using PGlite. Only Supabase's Auth schema is simulated. League mutations and claiming are deliberately unavailable until Phase 2.
+Migrations:
 
-For a hosted project, inspect `npx supabase link --help` and `npx supabase db push --help`, link your project and apply the committed migration. Do not commit database passwords. After applying, run Supabase's database/security advisors and confirm RLS in the dashboard. No hosted project was created or modified by this implementation.
+- `20260923195759_foundation.sql` — profiles, leagues, connections, teams, memberships, base RLS
+- `20260923224500_phase2_sleeper.sql` — Sleeper sync fields, provider members, matchups, team claims, sync runs, claim review RPC, additional RLS
+
+All exposed Phase 2 tables have RLS enabled. Normal authenticated clients are read-only for authoritative league/team membership data; privileged mutations happen server-side after the user session has been independently verified.
+
+For a hosted project, link it with the Supabase CLI and apply committed migrations. After applying schema changes, run Supabase security/performance advisors and review every warning before public beta.
 
 ## Checks
 
@@ -47,49 +84,45 @@ npm run build
 npm run build:vinext
 ```
 
-Run builds **sequentially**: Next.js and vinext both generate `.next/types`. GitHub Actions runs these checks without production credentials. Database tests cover league isolation, fabricated cross-league team IDs, denied privilege escalation, profile ownership, and membership uniqueness. Voting, provider mapping and recap tests are deferred with their corresponding phases.
+Run the two builds sequentially because both generate Next.js route types.
 
-On Windows, stop `start:vinext` before rebuilding: the running Worker can lock files in `dist`. Restart it after the build completes. See [verification results](docs/verification.md).
+Tests cover the Phase 1 auth/RLS foundation plus Sleeper validation/mapping, decimal score handling, matchup pairing, standings ordering, team-claim RLS, server-only claim review, forged reviewer rejection, and duplicate ownership prevention.
 
 ## Cloudflare Workers
 
-Uses [Cloudflare's currently recommended vinext integration](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/), with `nodejs_compat`. vinext is beta; see [architecture decisions](docs/architecture.md). No Vercel runtime is required. There are no KV, R2, Images, Durable Object or paid service bindings.
+The app retains the Cloudflare/vinext deployment path from Phase 1:
 
 ```sh
 npm run build:vinext
 npm run start:vinext
-# After configuring Cloudflare authentication and environment:
+# after configuring Cloudflare auth/secrets:
 npm run deploy:vinext
 ```
 
-The local Worker normally serves port 8787. For development parity use `npm run dev:vinext` on port 3001 and change `APP_URL` accordingly. Set runtime `APP_URL` in Worker variables and supply the public env values during build. Test the built Worker locally before deploying. Do not add blanket Cloudflare cache rules for app/auth pages.
+Configure the server-only Supabase secret as a Cloudflare secret/runtime secret rather than a public build variable.
 
-Before a public beta:
+Cloudflare Cron remains disabled until Phase 5. The current service worker only provides the offline shell; Web Push arrives in Phase 4.
 
-1. Create a Supabase Free project; apply the migration and run advisors.
-2. Set Supabase Auth Site URL to your HTTPS app origin and allow the exact `/auth/callback` URL. Keep email confirmation enabled, password minimum 12, anonymous sign-in disabled, and rate limits enabled.
-3. Configure free Turnstile for your domains and set its secret in Supabase Auth CAPTCHA settings. Set the public site key for the app build.
-4. Configure email delivery. Supabase's default email sender is restricted and is not suitable for arbitrary public signups; use an SMTP provider with a suitable free tier or restrict beta to permitted testers. Do not purchase email infrastructure implicitly.
-5. Create/link your GitHub repository, commit the files and lockfile, and enable the included CI workflow. No remote URL was supplied, so no remote repository is assumed.
-6. Deploy to a Cloudflare Workers Free account and test signup → email confirmation → sign-in → settings → sign-out on the deployed HTTPS origin, plus Turnstile failure, session expiry and mobile installation.
+## Current phase boundaries
 
-Cloudflare Cron is intentionally not activated until Phase 5. A manifest and offline-only service worker are included now; Web Push subscriptions and delivery arrive in Phase 4. The service worker stores only the static offline page, never league/account data.
+Implemented:
+- Phase 1 foundation/auth/RLS/PWA shell
+- Phase 2 Sleeper import, standings, current matchups, team claiming
 
-## Free-tier boundaries
+Not implemented:
+- Phase 3 secure trade voting
+- Phase 4 Web Push notifications
+- Phase 5 Tuesday weekly recaps
+- Yahoo connector
+- ESPN connector
 
-Keep accounts on Free plans and monitor their dashboards; free quotas can change. Workers Free request/CPU/bundle limits can constrain server rendering, and free Supabase database/storage/egress/MAU quotas plus idle pausing can affect beta availability. No claim is made that all traffic volumes fit free tiers. Review [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/), [Supabase pricing](https://supabase.com/pricing), and [Auth email limits](https://supabase.com/docs/guides/auth/auth-smtp) before opening beta. Avoid enabling paid bindings or automatic plan upgrades. CI minutes are subject to the GitHub account's allowance.
+Do not treat placeholder Trades or Recaps pages as working features yet.
 
 ## Source map
 
-- `src/app/`: pages, auth actions/callback, manifest, styles
-- `src/components/`: navigation, auth form, PWA registration, empty states
-- `src/lib/auth/`, `src/lib/supabase/`: validated session/auth boundary
-- `src/lib/fantasy/`: provider interface and Zod-normalized models
-- `supabase/`: local stack configuration and migration
-- `tests/`: credential-free unit and Postgres authorization tests
-- `public/`: app icons, offline fallback and service worker
-- `docs/architecture.md`: design, security review, phase boundaries
-- `vite.config.ts`, `wrangler.jsonc`: Cloudflare build/runtime
-- `.github/workflows/ci.yml`: repeatable quality gates
-
-Stop here until Phase 2 is explicitly authorized.
+- `src/app/leagues/` — import, league view, claim/review flows
+- `src/lib/fantasy/providers/sleeper/` — Sleeper validation/client/adapter/mapper
+- `src/lib/fantasy/sync/` — normalized persistence/sync service
+- `src/lib/supabase/` — user-scoped and server-only Supabase clients
+- `supabase/migrations/` — schema, constraints and RLS
+- `tests/` — credential-free unit and Postgres authorization tests

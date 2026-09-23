@@ -52,7 +52,11 @@ describe("normalized provider contracts", () => {
         provider: "sleeper",
         name: "League",
         season: 2026,
+        sport: "nfl",
+        status: "in_season",
+        totalTeams: 12,
         currentWeek: null,
+        timezone: "America/New_York",
       }).success,
     ).toBe(true);
     expect(
@@ -62,7 +66,11 @@ describe("normalized provider contracts", () => {
         provider: "other",
         name: "League",
         season: 999,
+        sport: "nfl",
+        status: "in_season",
+        totalTeams: 12,
         currentWeek: 30,
+        timezone: "America/New_York",
       }).success,
     ).toBe(false);
   });

@@ -36,8 +36,8 @@ export default async function Home() {
             One home for your league’s trade votes and weekly recaps. Built for
             the person who keeps it all running.
           </p>
-          <Link className="button light" href={user ? "/settings" : "/login"}>
-            {user ? "Manage your account" : "Set up your account"}
+          <Link className="button light" href={user ? "/leagues/new" : "/login"}>
+            {user ? "Connect a Sleeper league" : "Set up your account"}
             <ArrowUpRight size={18} />
           </Link>
           <small>
@@ -89,9 +89,15 @@ export default async function Home() {
             <span className="step-number">02</span>
             <div>
               <h3>Bring your league</h3>
-              <p>Connect your existing league. Keep playing where you play.</p>
+              <p>Connect your Sleeper league. Keep playing where you play.</p>
             </div>
-            <span className="tag">Up next</span>
+            {user ? (
+              <Link className="tag" href="/leagues/new">
+                Connect now
+              </Link>
+            ) : (
+              <span className="tag">After signup</span>
+            )}
           </div>
         </div>
       </section>

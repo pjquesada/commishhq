@@ -23,12 +23,14 @@ a {
   text-decoration: none;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button,
 a,
-input {
+input,
+select {
   -webkit-tap-highlight-color: transparent;
 }
 button {
@@ -40,7 +42,8 @@ button:disabled {
 }
 a:focus-visible,
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid #629e75;
   outline-offset: 5px;
 }
@@ -603,12 +606,15 @@ main {
   font-size: 12px;
   font-weight: 600;
 }
-.auth-form input {
+.auth-form input,
+.auth-form select {
   border: 1px solid #cfd7c8;
   border-radius: 5px;
   padding: 12px;
   width: 100%;
   font-weight: 400;
+  background: white;
+  color: var(--ink);
 }
 .auth-form small {
   font-size: 10px;
