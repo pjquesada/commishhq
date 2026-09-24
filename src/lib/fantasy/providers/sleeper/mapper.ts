@@ -37,6 +37,9 @@ export function mapLeague(raw: SleeperLeague, state: SleeperState): League {
     provider: "sleeper",
     season: Number(raw.season),
     currentWeek: activeWeek(raw, state),
+    sport: raw.sport,
+    status: raw.status,
+    totalTeams: raw.total_rosters,
   });
 }
 export function mapTeams(

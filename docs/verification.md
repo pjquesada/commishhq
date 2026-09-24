@@ -21,10 +21,10 @@ The initial parallel build attempt exposed a collision in generated `.next/types
 - `npm ci`: passed; zero reported dependency vulnerabilities (existing ESLint support/deprecation warning).
 - `npm run typecheck`: passed.
 - `npm run lint`: passed without lint warnings/errors.
-- `npm test`: 84 tests passed across six files.
+- `npm test`: 88 tests passed across seven files after integrating the existing Phase 2 branch.
 - `npm run build`: passed; all authenticated league routes are dynamic.
 
-Added tests cover Sleeper schemas/HTTP failures/mapping, score hundredths, season guards, matchup grouping, deterministic standings, claim redirects, privileged sync authorization, actual SQL/RLS/constraints, concurrent duplicate approval submissions, rollback and sync idempotency. The original Phase 1 migration is unchanged. Database tests run the real migrations with simulated Supabase Auth roles in PGlite; its single backend serializes queries, so they are not a live multi-connection lock stress test.
+Added tests cover Sleeper schemas/HTTP failures/mapping, score hundredths, season guards, matchup grouping, deterministic standings, claim redirects, privileged sync authorization, actual SQL/RLS/constraints, concurrent duplicate approval submissions, rollback and sync idempotency. Both earlier migrations are unchanged. An upgrade test seeds the original Phase 2 schema and verifies that approved claims, memberships, managers and matchup scores survive the third migration, interrupted syncs are retired and the obsolete review RPC is removed. Database tests run the real migrations with simulated Supabase Auth roles in PGlite; its single backend serializes queries, so they are not a live multi-connection lock stress test.
 
 No hosted Supabase migration, live configured signup/import/approval, remote deployment or production-secret validation was performed. Docker is not installed in this environment. Apply the new migration and provide the server-only Supabase secret before doing the real-service smoke test documented in README. No Phase 3 functionality is included.
 

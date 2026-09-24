@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { readFileSync, readdirSync } from "node:fs";
 import { beforeAll, afterAll, beforeEach, describe, expect, it } from "vitest";
 let db: PGlite;
+const authBootstrap=`create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key,email text); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`;
 const commissioner = "00000000-0000-4000-8000-000000000001",
   alice = "00000000-0000-4000-8000-000000000002",
   bob = "00000000-0000-4000-8000-000000000003",
@@ -44,9 +45,7 @@ async function review(id: string, decision = "approved", user = commissioner) {
 }
 beforeAll(async () => {
   db = new PGlite();
-  await db.exec(
-    `create role anon; create role authenticated; create role service_role; create schema auth; create table auth.users(id uuid primary key,email text); create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$; grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;`,
-  );
+  await db.exec(authBootstrap);
   for (const file of readdirSync("supabase/migrations")
     .filter((f) => f.endsWith(".sql"))
     .sort())
@@ -456,4 +455,29 @@ describe("transactional synchronization", () => {
       ).rows[0],
     ).toEqual({ sync_status: "syncing" });
   });
+});
+
+it('upgrades the already-published Phase 2 schema without losing approved identities or imported records', async () => {
+  const legacy = new PGlite();
+  try {
+    await legacy.exec(authBootstrap);
+    for(const file of ['20260923195759_foundation.sql','20260923224500_phase2_sleeper.sql']) await legacy.exec(readFileSync(`supabase/migrations/${file}`,'utf8'));
+    await legacy.query("insert into auth.users(id,email) values($1,'owner@test.com'),($2,'manager@test.com')",[commissioner,alice]);
+    await legacy.query("insert into public.leagues(id,name,season,commissioner_id,current_week,sync_status,last_synced_at) values($1,'Existing',2026,$2,0,'syncing',now())",[league,commissioner]);
+    await legacy.query("insert into public.teams(id,league_id,external_id,name,points_for) values($1,$2,'1','Existing team',143.52)",[team,league]);
+    await legacy.query("insert into public.provider_league_members(league_id,provider_user_id,display_name,team_id) values($1,'123','Existing Sleeper manager',$2)",[league,team]);
+    await legacy.query("insert into public.matchups(league_id,week,provider_matchup_id,team_id,points,status) values($1,7,'1',$2,100.05,'live')",[league,team]);
+    await legacy.query("insert into public.team_claims(league_id,team_id,user_id,status,reviewed_at,reviewed_by) values($1,$2,$3,'approved',now(),$4)",[league,team,alice,commissioner]);
+    await legacy.query('insert into public.league_members(league_id,user_id,team_id) values($1,$2,$3)',[league,alice,team]);
+    await legacy.query("insert into public.sync_runs(league_id,provider,external_id,status) values($1,'sleeper','555','running')",[league]);
+    await legacy.exec(readFileSync('supabase/migrations/20260923235640_sleeper_import_claims.sql','utf8'));
+    expect((await legacy.query('select user_id,team_id from public.league_members')).rows).toEqual([{user_id:alice,team_id:team}]);
+    expect((await legacy.query('select requester_id,requester_label,status,reviewer_id from public.team_claims')).rows).toEqual([{requester_id:alice,requester_label:'manager@test.com',status:'approved',reviewer_id:commissioner}]);
+    expect((await legacy.query('select external_id,display_name from public.provider_managers')).rows).toEqual([{external_id:'123',display_name:'Existing Sleeper manager'}]);
+    expect((await legacy.query('select team_id,manager_external_id from public.team_provider_managers')).rows).toEqual([{team_id:team,manager_external_id:'123'}]);
+    expect((await legacy.query('select team_score from public.matchups')).rows).toEqual([{team_score:'100.05'}]);
+    expect((await legacy.query('select status,actor_id from public.sync_runs')).rows).toEqual([{status:'failed',actor_id:commissioner}]);
+    expect((await legacy.query('select current_week,sync_status from public.leagues')).rows).toEqual([{current_week:null,sync_status:'failed'}]);
+    await expect(legacy.query("select public.review_team_claim(gen_random_uuid(),gen_random_uuid(),'approved')")).rejects.toThrow(/does not exist/);
+  } finally {await legacy.close();}
 });

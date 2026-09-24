@@ -1,23 +1,18 @@
--- Phase 2. Phase 1 remains immutable. All authoritative writes use narrowly granted functions.
-alter table public.leagues
-  add column current_week smallint check (current_week between 1 and 22),
-  add column sync_status text not null default 'pending' check (sync_status in ('pending','syncing','complete','failed')),
-  add column last_synced_at timestamptz;
-alter table public.teams
-  add column wins integer not null default 0 check (wins >= 0),
-  add column losses integer not null default 0 check (losses >= 0),
-  add column ties integer not null default 0 check (ties >= 0),
-  add column points_for numeric(14,2) not null default 0,
-  add column points_against numeric(14,2) not null default 0,
-  add column active boolean not null default true;
-
-create table public.provider_managers (
-  league_id uuid not null references public.leagues(id) on delete cascade,
-  external_id text not null check (length(external_id) between 1 and 200),
-  display_name text not null check (length(display_name) between 1 and 200),
-  primary key (league_id, external_id),
-  updated_at timestamptz not null default now()
-);
+-- Upgrade the earlier Phase 2 migration without deleting imported leagues or approved claims.
+-- Both earlier migration files remain immutable. The obsolete service-review API is retired.
+drop function public.review_team_claim(uuid,uuid,text);
+update public.leagues set current_week=null where current_week=0;
+alter table public.leagues drop constraint leagues_current_week_check;
+alter table public.leagues add constraint leagues_current_week_check check(current_week between 1 and 22);
+alter table public.leagues drop constraint leagues_total_teams_check;
+alter table public.leagues add constraint leagues_total_teams_check check(total_teams between 0 and 100);
+alter table public.teams add column active boolean not null default true;
+alter table public.teams drop constraint teams_points_for_check, drop constraint teams_points_against_check;
+alter table public.teams alter column points_for type numeric(14,2), alter column points_against type numeric(14,2);
+alter table public.provider_league_members rename to provider_managers;
+alter table public.provider_managers rename column provider_user_id to external_id;
+alter table public.provider_managers drop constraint provider_league_members_display_name_check;
+alter table public.provider_managers add constraint provider_managers_name_check check(length(display_name) between 1 and 200);
 create table public.team_provider_managers (
   league_id uuid not null,
   team_id uuid not null,
@@ -27,52 +22,38 @@ create table public.team_provider_managers (
   foreign key (league_id, manager_external_id) references public.provider_managers(league_id,external_id) on delete cascade
 );
 create index team_provider_managers_manager_idx on public.team_provider_managers(league_id,manager_external_id);
-create table public.matchups (
-  league_id uuid not null references public.leagues(id) on delete cascade,
-  week smallint not null check (week between 1 and 22),
-  team_id uuid not null,
-  opponent_id uuid,
-  provider_matchup_id text not null,
-  team_score numeric(14,2),
-  opponent_score numeric(14,2),
-  status text not null check (status in ('scheduled','live','final')),
-  updated_at timestamptz not null default now(),
-  primary key (league_id, week, team_id),
-  foreign key (league_id,team_id) references public.teams(league_id,id),
-  foreign key (league_id,opponent_id) references public.teams(league_id,id),
-  check (opponent_id is null or opponent_id <> team_id)
-);
+insert into public.team_provider_managers(league_id,team_id,manager_external_id)
+select league_id,team_id,external_id from public.provider_managers where team_id is not null;
+alter table public.matchups rename column opponent_team_id to opponent_id;
+alter table public.matchups rename column points to team_score;
+alter table public.matchups rename column opponent_points to opponent_score;
+alter table public.matchups add constraint matchups_distinct_opponents check(opponent_id is null or opponent_id<>team_id);
 create index matchups_team_idx on public.matchups(league_id,team_id);
 create index matchups_opponent_idx on public.matchups(league_id,opponent_id);
-create table public.team_claims (
-  id uuid primary key default gen_random_uuid(),
-  league_id uuid not null references public.leagues(id) on delete cascade,
-  team_id uuid not null,
-  requester_id uuid not null references public.profiles(id) on delete cascade,
-  requester_label text not null,
-  status text not null default 'pending' check (status in ('pending','approved','rejected','cancelled')),
-  created_at timestamptz not null default now(),
-  reviewed_at timestamptz,
-  reviewer_id uuid references public.profiles(id),
-  foreign key (league_id,team_id) references public.teams(league_id,id),
-  check ((status = 'pending' and reviewed_at is null and reviewer_id is null) or
-         (status in ('approved','rejected') and reviewed_at is not null and reviewer_id is not null) or
-         (status = 'cancelled' and reviewed_at is not null))
-);
-create unique index one_active_claim_per_user on public.team_claims(league_id,requester_id) where status in ('pending','approved');
-create unique index one_approved_claim_per_team on public.team_claims(league_id,team_id) where status = 'approved';
+alter table public.team_claims rename column user_id to requester_id;
+alter table public.team_claims rename column reviewed_by to reviewer_id;
+alter table public.team_claims add column requester_label text;
+update public.team_claims c set requester_label=coalesce(nullif(u.email,''),c.requester_id::text) from auth.users u where u.id=c.requester_id;
+alter table public.team_claims alter column requester_label set not null;
+update public.team_claims set reviewed_at=coalesce(reviewed_at,created_at) where status='cancelled';
+alter table public.team_claims add constraint claims_review_consistency check (
+  (status='pending' and reviewed_at is null and reviewer_id is null) or
+  (status in ('approved','rejected') and reviewed_at is not null and reviewer_id is not null) or
+  (status='cancelled' and reviewed_at is not null));
+alter index public.team_claims_one_active_user rename to one_active_claim_per_user;
+alter index public.team_claims_one_approved_team rename to one_approved_claim_per_team;
 create index claims_requester_idx on public.team_claims(requester_id);
 create index claims_review_idx on public.team_claims(reviewer_id);
 create index claims_team_idx on public.team_claims(league_id,team_id);
-create table public.sync_runs (
-  id uuid primary key default gen_random_uuid(),
-  league_id uuid not null references public.leagues(id) on delete cascade,
-  actor_id uuid not null references public.profiles(id),
-  status text not null check (status in ('syncing','complete','failed')),
-  started_at timestamptz not null default now(),
-  finished_at timestamptz,
-  error_code text check (error_code in ('provider','persistence','expired'))
-);
+alter table public.sync_runs rename column completed_at to finished_at;
+alter table public.sync_runs add column actor_id uuid references public.profiles(id);
+update public.sync_runs r set actor_id=l.commissioner_id from public.leagues l where l.id=r.league_id;
+alter table public.sync_runs alter column actor_id set not null;
+-- Pre-upgrade jobs have no lease; retire them before enabling overlap protection.
+update public.sync_runs set status='failed',finished_at=now(),error_code='expired' where status='running';
+update public.leagues set sync_status='failed' where sync_status='syncing';
+alter table public.sync_runs drop constraint sync_runs_status_check;
+alter table public.sync_runs add constraint sync_runs_status_check check(status in ('syncing','complete','failed'));
 create unique index one_sync_per_league on public.sync_runs(league_id) where status = 'syncing';
 create index sync_runs_actor_idx on public.sync_runs(actor_id,started_at);
 
@@ -95,6 +76,10 @@ create policy team_managers_read on public.team_provider_managers for select to 
 create policy matchups_read on public.matchups for select to authenticated using (private.can_read_league(league_id));
 create policy claims_read on public.team_claims for select to authenticated using (requester_id=(select auth.uid()) or private.is_commissioner(league_id));
 create policy sync_runs_read on public.sync_runs for select to authenticated using (private.is_commissioner(league_id));
+-- Equivalent old policies are replaced rather than accumulating permissive duplicates.
+drop policy provider_member_read on public.provider_managers;
+drop policy matchup_read on public.matchups;
+drop policy claim_read on public.team_claims;
 
 -- Invitation URL is navigation, not membership. This minimal projection deliberately excludes
 -- provider IDs, standings, matchups, other claims and approved manager identities.
@@ -182,7 +167,7 @@ begin
   if exists(select 1 from public.sync_runs where league_id=target and started_at>now()-interval '30 seconds') then raise exception 'Please wait before syncing again'; end if;
   update public.sync_runs set status='failed',finished_at=now(),error_code='expired' where league_id=target and status='syncing' and started_at<now()-interval '2 minutes';
   if exists(select 1 from public.sync_runs where league_id=target and status='syncing') then raise exception 'Sync already running'; end if;
-  insert into public.sync_runs(league_id,actor_id,status) values(target,actor,'syncing') returning id into run_id;
+  insert into public.sync_runs(league_id,actor_id,provider,external_id,status) values(target,actor,'sleeper',external_league,'syncing') returning id into run_id;
   update public.leagues set sync_status='syncing' where id=target;
   return jsonb_build_object('league_id',target,'run_id',run_id);
 end;
@@ -201,9 +186,11 @@ begin
   wk := (snapshot->'league'->>'currentWeek')::integer;
   update public.teams set active=false where league_id=target;
   delete from public.team_provider_managers where league_id=target;
-  delete from public.provider_managers where league_id=target;
+  -- Preserve provider IDs and metadata from existing imports; ownership links are replaced below.
+  update public.provider_managers set team_id=null where league_id=target;
   for manager in select value from jsonb_array_elements(snapshot->'managers') loop
-    insert into public.provider_managers(league_id,external_id,display_name) values(target,manager->>'externalId',manager->>'displayName');
+    insert into public.provider_managers(league_id,external_id,display_name) values(target,manager->>'externalId',manager->>'displayName')
+    on conflict(league_id,external_id) do update set display_name=excluded.display_name;
   end loop;
   for item in select value from jsonb_array_elements(snapshot->'teams') loop
     insert into public.teams(league_id,external_id,name,wins,losses,ties,points_for,points_against,active)
@@ -211,6 +198,7 @@ begin
     on conflict(league_id,external_id) do update set name=excluded.name,wins=excluded.wins,losses=excluded.losses,ties=excluded.ties,points_for=excluded.points_for,points_against=excluded.points_against,active=true returning id into team;
     for manager in select value from jsonb_array_elements(item->'managers') loop
       insert into public.team_provider_managers(league_id,team_id,manager_external_id) values(target,team,manager->>'externalId');
+      update public.provider_managers set team_id=team where league_id=target and external_id=manager->>'externalId';
     end loop;
   end loop;
   if wk is not null then
@@ -226,7 +214,9 @@ begin
       end loop;
     end loop;
   end if;
-  update public.leagues set name=snapshot->'league'->>'name',season=(snapshot->'league'->>'season')::integer,current_week=wk,sync_status='complete',last_synced_at=now() where id=target;
+  update public.leagues set name=snapshot->'league'->>'name',season=(snapshot->'league'->>'season')::integer,
+    status=coalesce(snapshot->'league'->>'status',status),total_teams=jsonb_array_length(snapshot->'teams'),
+    current_week=wk,sync_status='complete',last_synced_at=now() where id=target;
   update public.sync_runs set status='complete',finished_at=now() where id=run;
 end;
 $$;

@@ -34,7 +34,10 @@ Never put a privileged key in NEXT_PUBLIC variables, browser components, logs, o
 Apply the committed migrations in order:
 
 1. `20260923195759_foundation.sql`: unchanged Phase 1 foundation.
-2. `20260923235640_sleeper_import_claims.sql`: sync and standings columns; provider managers and team references; matchups; team claims; sync runs; indexes, RLS, and transactional RPCs.
+2. `20260923224500_phase2_sleeper.sql`: original Phase 2 tables and columns, preserved unchanged.
+3. `20260923235640_sleeper_import_claims.sql`: upgrades existing data to transactional sync and claims, provider manager links, indexes and RLS. Existing memberships, approved claims and scores are retained.
+
+If the earlier Phase 2 app is deployed, pause its traffic during the upgrade, apply pending migrations, then deploy this app version before reopening traffic. The upgrade renames columns and retires the earlier claim-review RPC.
 
 For hosted Supabase, inspect `npx supabase link --help` and `npx supabase db push --help`, link the intended project and apply pending migrations. Never reset a hosted database. Keep the `private` schema out of Data API exposed schemas. Run Supabase security advisors after applying. No hosted database was modified during development.
 

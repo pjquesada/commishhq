@@ -13,6 +13,9 @@ export const leagueSchema = z.object({
   name: z.string().min(1),
   season: z.number().int().min(2000).max(2200),
   currentWeek: z.number().int().min(0).max(22).nullable(),
+  sport: z.literal('nfl').optional(),
+  status: z.enum(['pre_draft','drafting','in_season','complete']).optional(),
+  totalTeams: z.number().int().positive().optional(),
 });
 export type League = z.infer<typeof leagueSchema>;
 export const teamSchema = z.object({

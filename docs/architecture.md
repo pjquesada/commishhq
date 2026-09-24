@@ -38,7 +38,7 @@ Public claim RPCs are security-invoker wrappers around guarded functions in non-
 
 Approval locks league then claim, verifies current commissioner, pending state and active team, creates membership and marks approved atomically. Shared league locks serialize approvals with sync. Unique membership keys enforce one user/team in each direction; composite foreign keys reject cross-league teams. Partial indexes block duplicate active claims and duplicate approved teams. Failure leaves the claim pending. No ordinary browser table writes can assign memberships or edit approval records, even for a commissioner.
 
-All new public tables have RLS and SELECT-only authenticated access. Membership/commissioner predicates restrict league records; claims are requester-or-commissioner; sync history is commissioner-only. Secret possession is never the server authorization decision. Phase 1 RLS/profile privacy remain unchanged. Apply the new migration rather than editing Phase 1.
+All new public tables have RLS and SELECT-only authenticated access. Membership/commissioner predicates restrict league records; claims are requester-or-commissioner; sync history is commissioner-only. Secret possession is never the server authorization decision. Phase 1 RLS/profile privacy remain unchanged. Both earlier migrations remain immutable; the third migration upgrades existing Phase 2 records, preserves approved membership and replaces the earlier reviewer-argument RPC. Pause earlier app traffic until the migration and new app deployment are complete.
 
 ## UI and runtime
 

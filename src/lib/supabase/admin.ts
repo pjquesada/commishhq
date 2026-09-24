@@ -1,22 +1,18 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
-import { publicEnv } from "@/lib/env";
+import { publicEnv, serverAdminEnv } from "@/lib/env";
 export function adminConfigured() {
   return (
     publicEnv().success &&
-    Boolean(
-      process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
-    )
+    serverAdminEnv().success
   );
 }
 /** No cookies, session persistence or browser imports. Caller must authenticate/authorize first. */
 export function createAdminClient() {
-  const env = publicEnv();
-  const secret =
-    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!env.success || !secret)
+  const env = serverAdminEnv();
+  if (!env.success)
     throw new Error("Server configuration is missing.");
-  return createClient(env.data.url, secret, {
+  return createClient(env.data.url, env.data.key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

@@ -7,6 +7,7 @@ import type {
   ProviderCapabilities,
   ProviderId,
 } from "./types";
+
 /** An adapter is scoped to a single external league; responses must be validated before mapping. */
 export interface FantasyProvider {
   readonly provider: ProviderId;
@@ -18,6 +19,7 @@ export interface FantasyProvider {
   getLeagueSettings(): Promise<LeagueSettings>;
   capabilities(): ProviderCapabilities;
 }
+
 export const providerAvailability = [
   { id: "sleeper", name: "Sleeper", label: "Connect now" },
   { id: "yahoo", name: "Yahoo Fantasy", label: "Coming Soon" },
