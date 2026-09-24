@@ -1,33 +1,53 @@
-# Phase 1 architecture
+# Architecture — Phase 2
 
-Scope: foundation only. No league importer, team claiming endpoint, ballots, push delivery, recap generation, or scheduled jobs are implemented.
+## Scope and layering
 
-1. **Next.js App Router + strict TypeScript.** Server Components render pages. Small client components handle navigation, authentication forms, and service-worker registration. Zod validates auth input, configuration, and normalized domain data.
-2. **Supabase Auth + Postgres.** Password sign-in, signup with email confirmation, PKCE callback and logout use server actions/routes. The proxy refreshes cookies; protected pages independently verify users with `getUser()`. Next.js Server Actions provide origin checking. Never use `getSession()` or editable metadata for authorization. Enable Supabase Turnstile CAPTCHA and email rate limits for public signup. No service-role key is needed in Phase 1.
-3. **RLS first.** Profiles are private. League reads require membership or the authoritative commissioner foreign key. An internal, fixed-search-path security-definer function avoids recursive membership policies; only authenticated users can execute it, and it derives identity from `auth.uid()`. No client writes to leagues, connections, teams or memberships. The profile creation trigger ignores untrusted metadata. Membership uniqueness and composite foreign keys prevent duplicate or cross-league team ownership. Multi-team exceptions are intentionally not enabled yet.
-4. **Provider boundary.** A league-scoped `FantasyProvider` returns validated internal models. External identifiers are strings; scores may be unknown rather than fabricated zeroes. Implement Sleeper schemas/client/mapper/adapter only in Phase 2. No provider-specific response types enter React.
-5. **Cloudflare runtime.** Current Cloudflare documentation recommends vinext. Both standard Next.js and vinext builds are retained. vinext remains beta; keep both builds and a deployed authentication smoke test as release gates. Authenticated responses use private/no-store and no CDN, KV, R2 or image service bindings are enabled. Run builds sequentially because both generate `.next/types`.
-6. **PWA foundation.** Manifest, local PNG icons, standalone mode, and a static offline fallback. Service worker never caches authenticated pages or API responses. Web Push handlers and opt-in are deferred to Phase 4.
-7. **Testing.** Vitest runs validation tests and real Postgres SQL through PGlite, with only Supabase's auth roles/schema simulated. Tests require no credentials. Hosted Supabase Auth, email delivery, Turnstile and deployed Workers still need integration smoke testing with your configured services.
+Preserves Next.js App Router, strict TypeScript, Tailwind, Supabase Auth/Postgres/RLS, PWA and Cloudflare/vinext. Adds Sleeper integration and approved manager identity only. Phase 3 voting, Phase 4 Web Push, Phase 5 Tuesday recaps, Yahoo and ESPN remain unimplemented.
 
-## Future phases (not implemented)
+Sleeper raw schemas, fixed-origin HTTP client, mapper and request-scoped FantasyProvider adapter are isolated in `src/lib/fantasy/providers/sleeper`. React sees only normalized domain/database models. Zod validates every external response before mapping. League/user snowflakes remain strings. Requests have eight-second timeouts, no shared cache, no redirects and no retry storms. Failures have safe messages, never fake-data fallback. Request-local promises deduplicate league, users and state calls. Only league, users, rosters, NFL state and weekly matchups are fetched.
 
-Phase 2 adds imports, provider sync, and commissioner-approved team identity. Phase 3 adds atomic ballot RPCs and separate anonymous eligibility/choice records. Phase 4 adds standards-based Web Push. Phase 5 adds deterministic recap facts, vocabulary cooldowns, and a separate Cloudflare Cron Worker with transactional idempotency. Do not enable Cron before these jobs exist. Voting security, concurrency and recap scheduling tests belong to those implementations, not speculative Phase 1 stubs.
+Scoring uses whole + hundredths/100, including points against. Missing matchup scores remain null; explicit custom points override points even when zero. Rows group by matchup_id, not array order; null IDs are separate unpaired teams. Duplicate/unknown teams and groups over two are rejected. Active week requires matching season and season type to avoid postseason numbering contaminating a regular-season league. Completed scoring legs or completed league indicate final; future/unknown scoring periods scheduled; others live. This is a period status, not an NFL game clock.
 
-## Security review
+Standings sort a copy by `(wins + ties / 2) / games`, then points for, then stable roster ID. No games means zero percentage. Numeric roster IDs use BigInt for lossless deterministic comparisons. Custom playoff tiebreakers may differ.
 
-- No service-role key, auth token, password or push key is logged or committed.
-- OAuth/provider secrets have no storage in the public connections table.
-- No self-service league membership or ownership elevation route exists.
-- Profile UPDATE is column-scoped with both USING and WITH CHECK policies.
-- Public pages contain only onboarding/feature descriptions. `/settings` requires a server-verified session.
-- No user HTML rendering, unsafe redirect targets, shared auth cache, or mock league data.
-- Email confirmation and CAPTCHA must be enabled in the hosted Supabase project; local development deliberately permits CAPTCHA-free testing.
-- Apply future migrations through source control, never manual production schema edits.
+## Trusted persistence and sync
 
-## Official references checked
+Cookie-aware `getUser()` authenticates users. Refresh additionally verifies persisted commissioner ownership with RLS-scoped reads before privileged persistence. The separate server-only admin client uses SUPABASE_SECRET_KEY, falling back to legacy SUPABASE_SERVICE_ROLE_KEY, with no cookies/session persistence. Secrets never enter browser code, public variables or logs.
 
-- [Cloudflare Next.js guide](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/)
-- [vinext](https://github.com/cloudflare/vinext)
-- [Supabase server-side authentication](https://supabase.com/docs/guides/auth/server-side/creating-a-client)
-- [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security)
+Service-only sync RPCs recheck persisted ownership. `begin_sleeper_sync` uses an advisory provider/league lock and unique connection constraint for idempotent first import. First importer becomes CommishHQ commissioner; this deliberately does not establish Sleeper commissioner ownership. Another account cannot take over a registered league. Actor IDs come from server-verified sessions, never form data.
+
+A two-minute lease and one-active-run index prevent overlapping/stale writes. Refreshes are throttled to 30 seconds and new imports capped at 20/account/hour. A retry expires abandoned runs. A killed process can show syncing until that retry; the UI explains it. For new leagues, metadata is validated before creating a database identity, so missing/nonexistent league failures do not create invented records. Existing refreshes acquire a lease before provider calls so failures are recorded.
+
+`finish_sleeper_sync` locks the league, verifies owner/lease/connection/week, upserts stable team IDs and replaces provider-manager references and current-week matchup rows in one transaction. Matchups are unique by league/week/team with same-league opponent foreign keys and nullable scores. Failed persistence rolls back completely. Failures retain the previous snapshot and mark the league/run failed; last_synced_at only advances after success. A stale failed attempt cannot overwrite a newer run's state.
+
+Removed rosters become inactive; team rows and approved memberships are preserved. Inactive teams cannot receive new approvals. Provider ownership changes never overwrite approved CommishHQ identities. Reassignment/revocation requires a later explicit workflow and is not included here.
+
+## Three identities
+
+- Supabase/CommishHQ user: profiles.id.
+- Sleeper user: provider_managers, linked to imported teams through team_provider_managers (including co-owners).
+- Approved CommishHQ league/team identity: league_members.
+
+The claim URL is navigation, not authority. Authentication preserves its safe local destination through sign-in/email confirmation. A narrow claim_options RPC exposes only league name/season and active team names/availability to signed-in visitors knowing the link. It excludes other requests, provider identities, membership identities, standings and scores. This invitation projection is an intentional exception to member-only data access, not a broad teams SELECT policy.
+
+Request identity comes from auth.uid(); its account email label comes from auth.users and is visible only to requester/commissioner. Labels are never used for authorization. Pending claims confer no membership or league read access. Managers may cancel pending requests. Commissioners must confirm the actual requester with the manager they know before approving.
+
+## Database authorization and atomic review
+
+Public claim RPCs are security-invoker wrappers around guarded functions in non-exposed private schema. Security-definer functions use empty search_path and qualified objects. PUBLIC/anon execute is revoked; authenticated grants are narrowly specified. The database derives requester/reviewer from auth.uid(), not caller-supplied IDs. Server actions independently authenticate and verify commissioner plus claim/league association.
+
+Approval locks league then claim, verifies current commissioner, pending state and active team, creates membership and marks approved atomically. Shared league locks serialize approvals with sync. Unique membership keys enforce one user/team in each direction; composite foreign keys reject cross-league teams. Partial indexes block duplicate active claims and duplicate approved teams. Failure leaves the claim pending. No ordinary browser table writes can assign memberships or edit approval records, even for a commissioner.
+
+All new public tables have RLS and SELECT-only authenticated access. Membership/commissioner predicates restrict league records; claims are requester-or-commissioner; sync history is commissioner-only. Secret possession is never the server authorization decision. Phase 1 RLS/profile privacy remain unchanged. Apply the new migration rather than editing Phase 1.
+
+## UI and runtime
+
+League pages live under Home, preserving the four-area navigation. Missing config/migrations produce setup feedback. Actions report pending/error/success states; stale data is labeled. No fake imported data or later-phase functionality. PWA caches only static offline fallback; authenticated pages are private/no-store. Cloudflare integration remains vinext with no paid bindings or scheduled services. Runtime keys use Worker secret storage. Builds run sequentially; stop Windows preview before rebuilding.
+
+## Verification and limitations
+
+Tests cover schemas, HTTP failures, mapping, standings, redirect preservation, trusted server orchestration, actual migration SQL, RLS/grants and transactional constraints. PGlite simulates Supabase Auth roles/schema only; application SQL runs unchanged. Concurrent Promise submissions verify a single successful approval and rollback. PGlite serializes queries in one backend: these are not live multi-connection lock stress tests. Postgres row locks and unique constraints enforce the production guarantee; hosted Auth/PostgREST and real network races remain deployment smoke tests.
+
+Logs have fixed event names, league UUID, outcome code and timestamp only. No request bodies, raw provider payloads, auth secrets, email labels or arbitrary error objects are logged. No background polling; monitor free-tier quotas. Sleeper's current documentation asks commercial users to discuss licensing.
+
+Official references: [Sleeper API](https://docs.sleeper.com/), [Supabase keys](https://supabase.com/docs/guides/api/api-keys), [RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [Cloudflare Next.js](https://developers.cloudflare.com/workers/framework-guides/web-apps/nextjs/).

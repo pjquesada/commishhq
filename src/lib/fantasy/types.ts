@@ -1,6 +1,11 @@
 import { z } from "zod";
 export const providerIdSchema = z.enum(["sleeper", "yahoo", "espn"]);
 export type ProviderId = z.infer<typeof providerIdSchema>;
+export const providerManagerSchema = z.object({
+  externalId: z.string().min(1),
+  displayName: z.string().min(1).max(200),
+});
+export type ProviderManager = z.infer<typeof providerManagerSchema>;
 export const leagueSchema = z.object({
   id: z.string().min(1),
   provider: providerIdSchema,
@@ -21,7 +26,8 @@ export const teamSchema = z.object({
   wins: z.number().int().nonnegative(),
   losses: z.number().int().nonnegative(),
   ties: z.number().int().nonnegative(),
-  pointsFor: z.number().finite().nonnegative(),
+  pointsFor: z.number().finite(),
+  pointsAgainst: z.number().finite(),
 });
 export type Team = z.infer<typeof teamSchema>;
 export const matchupSchema = z.object({

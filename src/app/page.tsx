@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { currentUser } from "@/lib/auth/session";
 import { providerAvailability } from "@/lib/fantasy/provider";
+import { LeagueList } from "@/components/league-list";
 export default async function Home() {
   const user = await currentUser();
   return (
@@ -21,9 +22,10 @@ export default async function Home() {
           <p>Your commissioner duties just got a little lighter.</p>
         </div>
         <span className="pill">
-          <span className="status-dot" /> Preseason setup
+          <span className="status-dot" /> League workspace
         </span>
       </div>
+      {user && <LeagueList />}
       <section className="welcome-panel">
         <div className="welcome-copy">
           <span className="outline-label">LET’S GET YOUR LEAGUE TOGETHER</span>
@@ -36,14 +38,14 @@ export default async function Home() {
             One home for your league’s trade votes and weekly recaps. Built for
             the person who keeps it all running.
           </p>
-          <Link className="button light" href={user ? "/settings" : "/login"}>
-            {user ? "Manage your account" : "Set up your account"}
+          <Link className="button light" href="/leagues/new">
+            Connect your Sleeper league
             <ArrowUpRight size={18} />
           </Link>
           <small>
             {user
-              ? "You’re signed in. League connections are coming next."
-              : "Start with your account. Bring your league next."}
+              ? "Your teams and standings, together in one place."
+              : "Sign in or create an account to get started."}
           </small>
         </div>
         <div className="field-art" aria-hidden="true">
@@ -91,7 +93,9 @@ export default async function Home() {
               <h3>Bring your league</h3>
               <p>Connect your existing league. Keep playing where you play.</p>
             </div>
-            <span className="tag">Up next</span>
+            <Link className="tag" href="/leagues/new">
+              Connect now ↗
+            </Link>
           </div>
         </div>
       </section>
@@ -104,7 +108,13 @@ export default async function Home() {
           {providerAvailability.map((p) => (
             <div key={p.id}>
               <span>{p.name}</span>
-              <small>{p.label}</small>
+              <small>
+                {p.id === "sleeper" ? (
+                  <Link href="/leagues/new">{p.label} ↗</Link>
+                ) : (
+                  p.label
+                )}
+              </small>
             </div>
           ))}
         </div>

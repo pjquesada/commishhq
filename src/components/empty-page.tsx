@@ -28,8 +28,8 @@ export function EmptyPage({ kind }: { kind: "trades" | "recaps" }) {
         </h2>
         <p>
           {trades
-            ? "Secure league voting will arrive after league connections. Ballot choices will stay hidden until voting closes."
-            : "Personalized weekly recaps will arrive after league connections and notifications. Grounded in your actual matchups."}
+            ? "Secure league voting is coming in Phase 3. Ballot choices will stay hidden until voting closes."
+            : "Personalized weekly recaps are coming in Phase 5. Grounded in your actual matchups."}
         </p>
         <Link className="button" href="/">
           Back to Home <span>→</span>

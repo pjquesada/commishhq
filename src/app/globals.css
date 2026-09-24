@@ -886,3 +886,156 @@ main {
     font-size: 18px;
   }
 }
+
+/* Phase 2 league views */
+.back-link {
+  display: inline-block;
+  font-size: 12px;
+  margin-bottom: 22px;
+  color: #607456;
+}
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
+.claim-link {
+  border-top: 1px solid var(--line);
+  margin-top: 22px;
+  padding-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.claim-link > a {
+  text-decoration: underline;
+  font-size: 12px;
+}
+.claim-link p,
+.claim-link small {
+  flex-basis: 100%;
+}
+.claim-link small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.league-list-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+.league-list-row > div {
+  flex: 1;
+}
+.league-list-row p {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+th,
+td {
+  padding: 17px 12px;
+  border-bottom: 1px solid var(--line);
+}
+thead th {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+tbody th {
+  font-weight: 400;
+  min-width: 150px;
+}
+tbody th small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+td {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.table-note {
+  font-size: 11px;
+  margin: 14px 0;
+}
+.matchup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+  gap: 15px;
+}
+.matchup-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+}
+.matchup-card > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 16px;
+}
+.matchup-card b {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.auth-form select {
+  padding: 12px;
+  border: 1px solid #cfd7c8;
+  border-radius: 5px;
+  background: white;
+  width: 100%;
+  font: inherit;
+}
+.success-message {
+  font-size: 12px;
+  color: #315f3e;
+  margin-top: 12px;
+}
+.sync-warning {
+  padding: 16px;
+  background: #fcf0dd;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: #725831;
+}
+.claim-history {
+  margin-top: 22px;
+  border-top: 1px solid var(--line);
+  padding-top: 15px;
+}
+@media (max-width: 760px) {
+  .settings-panel {
+    padding: 19px;
+  }
+  .settings-panel .section-title {
+    flex-wrap: wrap;
+  }
+  th,
+  td {
+    padding: 13px 9px;
+  }
+  .action-row > form {
+    width: 100%;
+  }
+  .claim-link small {
+    overflow-wrap: anywhere;
+  }
+  .settings-panel small {
+    overflow-wrap: anywhere;
+  }
+}

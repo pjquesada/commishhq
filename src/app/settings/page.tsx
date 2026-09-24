@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/session";
 import { signOut } from "@/app/auth/actions";
 import { providerAvailability } from "@/lib/fantasy/provider";
+import Link from "next/link";
 export const metadata = { title: "Settings" };
 export default async function Settings() {
   const user = await requireUser();
@@ -25,12 +26,19 @@ export default async function Settings() {
       <section className="settings-panel">
         <h2>League connections</h2>
         <p>
-          League importing is coming next. Yahoo and ESPN will follow Sleeper.
+          Connect your Sleeper league. Yahoo and ESPN will follow in later
+          phases.
         </p>
         {providerAvailability.map((p) => (
           <div className="settings-row" key={p.id}>
             <strong>{p.name}</strong>
-            <span className="tag">{p.label}</span>
+            {p.id === "sleeper" ? (
+              <Link className="button secondary" href="/leagues/new">
+                Connect now
+              </Link>
+            ) : (
+              <span className="tag">{p.label}</span>
+            )}
           </div>
         ))}
       </section>

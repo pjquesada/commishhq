@@ -16,7 +16,12 @@ export function Navigation() {
         <Link
           key={href}
           href={href}
-          aria-current={pathname === href ? "page" : undefined}
+          aria-current={
+            pathname === href ||
+            (href === "/" && pathname.startsWith("/leagues/"))
+              ? "page"
+              : undefined
+          }
         >
           <Icon size={19} strokeWidth={1.7} />
           <span>{name}</span>

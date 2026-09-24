@@ -24,8 +24,8 @@ async function asUser<T>(user: string, fn: () => Promise<T>): Promise<T> {
 beforeAll(async () => {
   db = new PGlite();
   // Only Supabase's auth schema/roles are simulated. All application SQL runs unchanged in Postgres.
-  await db.exec(`create role anon; create role authenticated; create schema auth;
-    create table auth.users(id uuid primary key);
+  await db.exec(`create role anon; create role authenticated; create role service_role; create schema auth;
+    create table auth.users(id uuid primary key, email text);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
     grant usage on schema auth to authenticated;
     grant execute on function auth.uid() to authenticated;`);
@@ -33,7 +33,7 @@ beforeAll(async () => {
     .filter((f) => f.endsWith(".sql"))
     .sort())
     await db.exec(readFileSync(`supabase/migrations/${file}`, "utf8"));
-  await db.query("insert into auth.users values ($1),($2),($3)", [
+  await db.query("insert into auth.users(id) values ($1),($2),($3)", [
     alice,
     bob,
     outsider,
