@@ -2,13 +2,14 @@
 import { useActionState, useState } from "react";
 import { Turnstile } from "@/components/turnstile";
 import { authenticate } from "@/app/auth/actions";
-export function AuthForm() {
+export function AuthForm({ next = "/" }: { next?: string }) {
   const [state, action, pending] = useActionState(authenticate, {});
   const [signup, setSignup] = useState(false);
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
   return (
     <form action={action} className="auth-form">
       <input type="hidden" name="mode" value={signup ? "signup" : "login"} />
+      <input type="hidden" name="next" value={next} />
       <label>
         Email address
         <input

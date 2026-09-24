@@ -15,3 +15,18 @@ Completed locally on September 23, 2026:
 No production credentials were used. No hosted database migration, real email/CAPTCHA signup, production session refresh, remote deployment or GitHub push was performed. These remain release gates after manual service configuration. The full local Supabase Docker stack was not started; migration syntax, triggers, constraints, grants and RLS were executed in PGlite against simulated Supabase Auth roles/schema.
 
 The initial parallel build attempt exposed a collision in generated `.next/types`. Builds are now documented and run sequentially, and `typecheck` regenerates the required types so a previous vinext build does not leave it broken.
+
+## Phase 2 verification
+
+- `npm ci`: passed; zero reported dependency vulnerabilities (existing ESLint support/deprecation warning).
+- `npm run typecheck`: passed.
+- `npm run lint`: passed without lint warnings/errors.
+- `npm test`: 88 tests passed across seven files after integrating the existing Phase 2 branch.
+- `npm run build`: passed; all authenticated league routes are dynamic.
+
+Added tests cover Sleeper schemas/HTTP failures/mapping, score hundredths, season guards, matchup grouping, deterministic standings, claim redirects, privileged sync authorization, actual SQL/RLS/constraints, concurrent duplicate approval submissions, rollback and sync idempotency. Both earlier migrations are unchanged. An upgrade test seeds the original Phase 2 schema and verifies that approved claims, memberships, managers and matchup scores survive the third migration, interrupted syncs are retired and the obsolete review RPC is removed. Database tests run the real migrations with simulated Supabase Auth roles in PGlite; its single backend serializes queries, so they are not a live multi-connection lock stress test.
+
+No hosted Supabase migration, live configured signup/import/approval, remote deployment or production-secret validation was performed. Docker is not installed in this environment. Apply the new migration and provide the server-only Supabase secret before doing the real-service smoke test documented in README. No Phase 3 functionality is included.
+
+- `npm run build:vinext`: passed; produced the Worker with all four new league routes. Adapter emits its existing informational classification/bundler messages.
+- Built Worker smoke check: Home renders, import and claim routes redirect to sign-in with the destination preserved, and missing Supabase setup displays guidance rather than a crash. No browser errors observed. No private-key environment names found in emitted client JavaScript.

@@ -1,12 +1,13 @@
 import { AuthForm } from "@/components/auth-form";
 import { publicEnv } from "@/lib/env";
+import { safeNext } from "@/lib/auth/validation";
 export const metadata = { title: "Sign in" };
 export default async function Login({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
   return (
     <section className="auth-panel">
       <p className="eyebrow">WELCOME TO THE LEAGUE</p>
@@ -19,7 +20,7 @@ export default async function Login({
         </p>
       )}
       {publicEnv().success ? (
-        <AuthForm />
+        <AuthForm next={safeNext(next ?? null)} />
       ) : (
         <div className="setup-notice">
           <h2>Account setup is on its way.</h2>

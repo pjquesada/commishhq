@@ -64,6 +64,24 @@ describe("server authentication boundary", () => {
     auth.signInWithPassword.mockResolvedValue({ error: null });
     await expect(authenticate({}, form())).rejects.toThrow("REDIRECT:/");
   });
+  it("preserves safe claim destinations through sign-in and signup", async () => {
+    const destination = "/leagues/10000000-0000-4000-8000-000000000001/claim";
+    const login = form();
+    login.set("next", destination);
+    auth.signInWithPassword.mockResolvedValue({ error: null });
+    await expect(authenticate({}, login)).rejects.toThrow(
+      `REDIRECT:${destination}`,
+    );
+    const signup = form("signup");
+    signup.set("next", destination);
+    auth.signUp.mockResolvedValue({ error: null });
+    await authenticate({}, signup);
+    expect(
+      new URL(
+        auth.signUp.mock.calls[0]?.[0].options.emailRedirectTo,
+      ).searchParams.get("next"),
+    ).toBe(destination);
+  });
   it("uses a configured confirmation destination and generic signup response", async () => {
     auth.signUp.mockResolvedValue({ error: null });
     const result = await authenticate({}, form("signup"));

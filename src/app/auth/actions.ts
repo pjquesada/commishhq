@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { publicEnv } from "@/lib/env";
-import { credentialsSchema } from "@/lib/auth/validation";
+import { credentialsSchema, safeNext } from "@/lib/auth/validation";
 export type AuthState = { error?: string; message?: string };
 export async function authenticate(
   _state: AuthState,
@@ -25,16 +25,21 @@ export async function authenticate(
     return { error: "Please complete the security check." };
   const supabase = await createClient();
   const { email, password, captchaToken } = parsed.data;
+  const next = safeNext(
+    typeof form.get("next") === "string" ? String(form.get("next")) : null,
+  );
   if (form.get("mode") === "signup") {
     const origin = z.url().safeParse(process.env.APP_URL);
     if (!origin.success)
       return { error: "Account access is not configured yet." };
+    const callback = new URL("/auth/callback", origin.data);
+    if (next !== "/") callback.searchParams.set("next", next);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         captchaToken,
-        emailRedirectTo: new URL("/auth/callback", origin.data).toString(),
+        emailRedirectTo: callback.toString(),
       },
     });
     if (error)
@@ -52,7 +57,7 @@ export async function authenticate(
     return {
       error: "Unable to sign in. Check your details and email confirmation.",
     };
-  redirect("/");
+  redirect(next);
 }
 export async function signOut() {
   const supabase = await createClient();
