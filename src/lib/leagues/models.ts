@@ -65,6 +65,18 @@ export function databaseError(message: string): LeagueError {
     "Invalid team",
     "League unavailable",
     "Pending claim not found",
+    "Not eligible",
+    "Already voted",
+    "Voting is closed",
+    "Vote not found",
+    "Invalid trade",
+    "Results are hidden",
+    "Too many attempts",
+    "Vote rules are frozen",
+    "Privacy cannot change",
+    "Identities cannot be published",
+    "Ballot cannot be edited",
+    "Eligibility is frozen",
   ];
   if (known.includes(message)) return new LeagueError(message + ".");
   if (message.includes("one_active_claim_per_user"))
@@ -76,6 +88,6 @@ export function databaseError(message: string): LeagueError {
       "That team or manager is already assigned. Refresh and review the current status.",
     );
   return new LeagueError(
-    "The request could not be saved. Check that the Phase 2 migration is applied, then try again.",
+    "The request could not be saved. Check that database migrations are applied, then try again.",
   );
 }

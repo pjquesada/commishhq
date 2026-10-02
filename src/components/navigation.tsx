@@ -2,6 +2,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, ArrowLeftRight, Newspaper, Settings } from "lucide-react";
+function currentNav(pathname: string, href: string) {
+  if (href === "/trades")
+    return pathname === "/trades" || pathname.includes("/trades");
+  if (href === "/recaps")
+    return pathname === "/recaps" || pathname.includes("/recaps");
+  if (href === "/settings") return pathname.startsWith("/settings");
+  if (href === "/")
+    return (
+      pathname === "/" ||
+      (pathname.startsWith("/leagues/") &&
+        !pathname.includes("/trades") &&
+        !pathname.includes("/recaps"))
+    );
+  return pathname === href;
+}
 const items = [
   { href: "/", name: "Home", icon: House },
   { href: "/trades", name: "Trades", icon: ArrowLeftRight },
@@ -16,12 +31,7 @@ export function Navigation() {
         <Link
           key={href}
           href={href}
-          aria-current={
-            pathname === href ||
-            (href === "/" && pathname.startsWith("/leagues/"))
-              ? "page"
-              : undefined
-          }
+          aria-current={currentNav(pathname, href) ? "page" : undefined}
         >
           <Icon size={19} strokeWidth={1.7} />
           <span>{name}</span>

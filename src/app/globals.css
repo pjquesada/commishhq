@@ -1044,4 +1044,59 @@ td {
   .settings-panel small {
     overflow-wrap: anywhere;
   }
+  .choice-row {
+    flex-direction: column;
+  }
+  .asset-row {
+    grid-template-columns: 1fr;
+  }
+}
+.league-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.league-switcher a {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+.league-switcher a[aria-current="page"] {
+  background: var(--green);
+  color: var(--lime);
+}
+.trade-card {
+  border-top: 1px solid var(--line);
+  padding: 16px 0;
+}
+.trade-card p {
+  margin: 6px 0;
+}
+.check-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 8px 0;
+}
+.asset-row {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.choice-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 16px 0;
+}
+legend {
+  font-weight: 650;
+  margin-bottom: 8px;
 }

@@ -5,7 +5,11 @@ export function leagueLog(
     | "sync_complete"
     | "sync_failed"
     | "claim_requested"
-    | "claim_reviewed",
+    | "claim_reviewed"
+    | "vote_published"
+    | "ballot_cast"
+    | "vote_cancelled"
+    | "identities_published",
   leagueId: string,
   outcome: "ok" | "provider" | "persistence" = "ok",
 ) {
