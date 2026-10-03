@@ -7,14 +7,14 @@
 - Phase 3 secure trade voting on `full-app-build`
 - Phase 4 standards-based Web Push
 - Phase 5 weekly recap engine and Tuesday scheduler
+- Phase 6 Yahoo Fantasy OAuth
 
 ## Current
 
-Phase 6 Yahoo Fantasy OAuth.
+Phase 7 ESPN public read and gated experimental private credentials.
 
 ## Remaining
 
-- Phase 6 Yahoo Fantasy OAuth
 - Phase 7 ESPN public read and gated experimental private credentials
 - Final security review, documentation, draft pull request
 
@@ -38,4 +38,5 @@ Phase 6 Yahoo Fantasy OAuth.
 - Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` before a public beta.
 - Generate a VAPID key pair. Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Set `CRON_SECRET` as a Worker secret.
 - Optional Workers AI binding `AI` on the Worker. If it is missing, recaps still publish.
-- Yahoo and ESPN credentials are not wired yet.
+- Yahoo: create an app with scope `fspt-r`, set `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, `YAHOO_REDIRECT_URI` (`/api/yahoo/callback`), and `PROVIDER_TOKEN_ENCRYPTION_KEY` (32-byte base64). Fantasy API access may still require Yahoo's approval.
+- ESPN is not wired yet.

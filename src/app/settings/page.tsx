@@ -85,8 +85,7 @@ export default async function Settings({
       <section className="settings-panel">
         <h2>League connections</h2>
         <p>
-          Connect your Sleeper league. Yahoo and ESPN will follow in later
-          phases.
+          Connect a Sleeper or Yahoo league. ESPN support is labeled separately.
         </p>
         {providerAvailability.map((p) => (
           <div className="settings-row" key={p.id}>
@@ -94,6 +93,10 @@ export default async function Settings({
             {p.id === "sleeper" ? (
               <Link className="button secondary" href="/leagues/new">
                 Connect now
+              </Link>
+            ) : p.id === "yahoo" ? (
+              <Link className="button secondary" href="/leagues/yahoo">
+                Connect
               </Link>
             ) : (
               <span className="tag">{p.label}</span>
