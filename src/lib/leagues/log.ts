@@ -9,7 +9,9 @@ export function leagueLog(
     | "vote_published"
     | "ballot_cast"
     | "vote_cancelled"
-    | "identities_published",
+    | "identities_published"
+    | "notification_sent"
+    | "notification_failed",
   leagueId: string,
   outcome: "ok" | "provider" | "persistence" = "ok",
 ) {

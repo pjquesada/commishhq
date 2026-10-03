@@ -80,6 +80,12 @@ export async function publishTradeVote(
   if (result.error) return failure(databaseError(result.error.message));
   const voteId = uuidSchema.parse(result.data);
   leagueLog("vote_published", leagueId.data);
+  try {
+    const { deliverPending } = await import("@/lib/push/delivery");
+    await deliverPending(5);
+  } catch {
+    /* The outbox remains pending for the scheduled worker. */
+  }
   revalidatePath("/trades");
   revalidatePath(`/leagues/${leagueId.data}/trades/${voteId}`);
   redirect(`/leagues/${leagueId.data}/trades/${voteId}`);

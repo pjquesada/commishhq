@@ -77,6 +77,8 @@ export function databaseError(message: string): LeagueError {
     "Identities cannot be published",
     "Ballot cannot be edited",
     "Eligibility is frozen",
+    "Invalid subscription",
+    "Subscription not found",
   ];
   if (known.includes(message)) return new LeagueError(message + ".");
   if (message.includes("one_active_claim_per_user"))
