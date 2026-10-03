@@ -120,7 +120,7 @@ export default async function LeaguePage({
         <div className="table-scroll">
           <table>
             <caption className="sr-only">
-              League standings and Sleeper managers
+              League standings and managers
             </caption>
             <thead>
               <tr>
@@ -149,7 +149,7 @@ export default async function LeaguePage({
                             )?.display_name,
                         )
                         .filter(Boolean)
-                        .join(", ") || "Unassigned on Sleeper"}
+                        .join(", ") || "No manager name imported"}
                     </small>
                   </th>
                   <td>
@@ -173,8 +173,8 @@ export default async function LeaguePage({
         {games.length === 0 ? (
           <p>
             {league.current_week
-              ? "Sleeper has no matchup rows for this week."
-              : "Current NFL state does not match this league’s season and season type. No current-week matchups were fetched."}
+              ? "No matchup rows for this week."
+              : "The current NFL week does not match this league’s season. No current-week matchups were fetched."}
           </p>
         ) : (
           <div className="matchup-grid">

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { syncSleeperLeague } from "@/lib/leagues/sync";
+import { syncYahooLeague } from "@/lib/leagues/yahoo-sync";
+import { syncEspnLeague } from "@/lib/leagues/espn-sync";
 import { getLeague } from "@/lib/leagues/queries";
 import { LeagueError, databaseError, uuidSchema } from "@/lib/leagues/models";
 import { ProviderError } from "@/lib/fantasy/providers/sleeper/client";
@@ -44,11 +46,15 @@ export async function resyncLeague(
       throw new LeagueError("Only the commissioner can sync this league.");
     const connection = await client
       .from("league_connections")
-      .select("external_id")
+      .select("external_id,provider")
       .eq("league_id", id.data)
       .single();
     if (connection.error) throw databaseError(connection.error.message);
-    await syncSleeperLeague(String(connection.data.external_id), id.data);
+    const externalId = String(connection.data.external_id);
+    const provider = String(connection.data.provider);
+    if (provider === "yahoo") await syncYahooLeague(externalId);
+    else if (provider === "espn") await syncEspnLeague(externalId, league.season);
+    else await syncSleeperLeague(externalId, id.data);
     revalidatePath(`/leagues/${id.data}`);
     revalidatePath("/");
     return { message: "League refreshed." };

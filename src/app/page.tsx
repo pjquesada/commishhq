@@ -9,8 +9,27 @@ import {
 import { currentUser } from "@/lib/auth/session";
 import { providerAvailability } from "@/lib/fantasy/provider";
 import { LeagueList } from "@/components/league-list";
-export default async function Home() {
+import { ActiveLeague } from "@/components/active-league";
+import { listLeagues } from "@/lib/leagues/queries";
+import { uuidSchema } from "@/lib/leagues/models";
+
+const providerHref = {
+  sleeper: "/leagues/new",
+  yahoo: "/leagues/yahoo",
+  espn: "/leagues/espn",
+} as const;
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ league?: string }>;
+}) {
   const user = await currentUser();
+  const { league: requested } = await searchParams;
+  const leagues = user ? await listLeagues().catch(() => []) : [];
+  const selected =
+    leagues.find((league) => league.id === requested && uuidSchema.safeParse(requested).success) ??
+    leagues[0];
   return (
     <>
       <div className="page-heading">
@@ -25,7 +44,11 @@ export default async function Home() {
           <span className="status-dot" /> League workspace
         </span>
       </div>
-      {user && <LeagueList />}
+      {selected ? (
+        <ActiveLeague leagueId={selected.id} leagues={leagues} />
+      ) : (
+        user && <LeagueList />
+      )}
       <section className="welcome-panel">
         <div className="welcome-copy">
           <span className="outline-label">LET’S GET YOUR LEAGUE TOGETHER</span>
@@ -109,11 +132,7 @@ export default async function Home() {
             <div key={p.id}>
               <span>{p.name}</span>
               <small>
-                {p.id === "sleeper" ? (
-                  <Link href="/leagues/new">{p.label} ↗</Link>
-                ) : (
-                  p.label
-                )}
+                <Link href={providerHref[p.id]}>{p.label} ↗</Link>
               </small>
             </div>
           ))}
@@ -121,7 +140,7 @@ export default async function Home() {
       </section>
       <div className="section-title coming-title">
         <h2>A better week for everyone</h2>
-        <span className="eyebrow">COMING TO YOUR HQ</span>
+        <span className="eyebrow">IN YOUR HQ</span>
       </div>
       <div className="feature-grid">
         <Link href="/trades" className="feature">

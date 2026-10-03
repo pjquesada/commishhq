@@ -1067,6 +1067,15 @@ td {
   background: var(--green);
   color: var(--lime);
 }
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
 .trade-card {
   border-top: 1px solid var(--line);
   padding: 16px 0;

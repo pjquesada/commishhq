@@ -23,6 +23,6 @@ export interface FantasyProvider {
 
 export const providerAvailability = [
   { id: "sleeper", name: "Sleeper", label: "Connect now" },
-  { id: "yahoo", name: "Yahoo Fantasy", label: "Coming Soon" },
-  { id: "espn", name: "ESPN Fantasy", label: "Coming Soon" },
+  { id: "yahoo", name: "Yahoo Fantasy", label: "Connect" },
+  { id: "espn", name: "ESPN Fantasy", label: "Public league" },
 ] as const;

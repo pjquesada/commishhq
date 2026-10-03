@@ -1,6 +1,8 @@
 import { requireUser } from "@/lib/auth/session";
 import { signOut } from "@/app/auth/actions";
 import { providerAvailability } from "@/lib/fantasy/provider";
+import { adminConfigured } from "@/lib/supabase/admin";
+import { SyncForm } from "@/components/league-forms";
 import { listLeagues } from "@/lib/leagues/queries";
 import { createClient } from "@/lib/supabase/server";
 import { VotePreferencesForm } from "@/components/trade-actions";
@@ -105,6 +107,23 @@ export default async function Settings({
             )}
           </div>
         ))}
+        {leagues.length > 0 && (
+          <ul className="recap-list">
+            {leagues.map((league) => (
+              <li key={league.id}>
+                <Link href={`/leagues/${league.id}`}>{league.name}</Link>
+                <span className="muted">
+                  {" "}
+                  · {league.sync_status}
+                  {league.current_week ? ` · Week ${league.current_week}` : ""}
+                </span>
+                {league.commissioner_id === user.id && (
+                  <SyncForm leagueId={league.id} configured={adminConfigured()} />
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
       {selected && selected.commissioner_id === user.id && (
         <section className="settings-panel">

@@ -6,7 +6,7 @@ CommishHQ treats the database as the authorization boundary. A signed-in user is
 
 - One approved team, one ballot. Eligibility is frozen when the vote opens.
 - Anonymous ballots are stored without `team_id`. Revealable identities stay hidden until the vote is closed and the commissioner publishes them.
-- Open votes expose only `votes_cast / eligible_count`. Tallies are written at finalization, after `closes_at`.
+- Open votes expose only `votes_cast / eligible_count`. Tallies are written at finalization, after `closes_at`. A check constraint rejects stored tallies while a vote is draft or open.
 - Clients have no table privileges on ballot rows. Casting goes through `cast_trade_ballot`, which uses `auth.uid()`.
 - Privacy mode and the veto threshold cannot change after open.
 - Turnstile is required when either the site key or the secret is set.
