@@ -26,4 +26,8 @@ Default model: `@cf/zai-org/glm-4.7-flash` via `RECAP_AI_MODEL`. Recaps publish 
 
 ## ESPN
 
-Not connected yet. Do not treat undocumented private-league cookies as an official API.
+ESPN does not publish an official fantasy OAuth API for third-party commissioner tools. CommishHQ therefore does not pretend one exists.
+
+Public leagues are read, unofficially, from `lm-api-reads.fantasy.espn.com` using the league ID and season. The screen is labeled unofficial. No cookies are sent for that path.
+
+Private leagues still depend on `espn_s2` and `SWID` session cookies. That path is experimental, off unless `ENABLE_ESPN_EXPERIMENTAL=true`, encrypted with `PROVIDER_TOKEN_ENCRYPTION_KEY`, never logged, and never returned to the browser. Confirm ESPN's terms before offering it in a public commercial release.

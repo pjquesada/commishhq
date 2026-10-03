@@ -8,14 +8,14 @@
 - Phase 4 standards-based Web Push
 - Phase 5 weekly recap engine and Tuesday scheduler
 - Phase 6 Yahoo Fantasy OAuth
+- Phase 7 ESPN public read, with experimental private sessions off by default
 
 ## Current
 
-Phase 7 ESPN public read and gated experimental private credentials.
+Final security review, documentation, and draft pull request.
 
 ## Remaining
 
-- Phase 7 ESPN public read and gated experimental private credentials
 - Final security review, documentation, draft pull request
 
 ## Decisions
@@ -39,4 +39,4 @@ Phase 7 ESPN public read and gated experimental private credentials.
 - Generate a VAPID key pair. Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT`. Set `CRON_SECRET` as a Worker secret.
 - Optional Workers AI binding `AI` on the Worker. If it is missing, recaps still publish.
 - Yahoo: create an app with scope `fspt-r`, set `YAHOO_CLIENT_ID`, `YAHOO_CLIENT_SECRET`, `YAHOO_REDIRECT_URI` (`/api/yahoo/callback`), and `PROVIDER_TOKEN_ENCRYPTION_KEY` (32-byte base64). Fantasy API access may still require Yahoo's approval.
-- ESPN is not wired yet.
+- ESPN public import uses the unofficial read endpoint and is labeled as such. Private `espn_s2` / `SWID` storage stays off unless `ENABLE_ESPN_EXPERIMENTAL=true`.

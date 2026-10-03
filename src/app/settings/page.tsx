@@ -99,7 +99,9 @@ export default async function Settings({
                 Connect
               </Link>
             ) : (
-              <span className="tag">{p.label}</span>
+              <Link className="button secondary" href="/leagues/espn">
+                Public league
+              </Link>
             )}
           </div>
         ))}
