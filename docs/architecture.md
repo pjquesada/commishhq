@@ -1,8 +1,8 @@
-# Architecture — Phase 2
+# Architecture
 
 ## Scope and layering
 
-Preserves Next.js App Router, strict TypeScript, Tailwind, Supabase Auth/Postgres/RLS, PWA and Cloudflare/vinext. Adds Sleeper integration and approved manager identity only. Phase 3 voting, Phase 4 Web Push, Phase 5 Tuesday recaps, Yahoo and ESPN remain unimplemented.
+Preserves Next.js App Router, strict TypeScript, Tailwind, Supabase Auth/Postgres/RLS, PWA and Cloudflare/vinext. Sleeper import and approved manager identity are the base. Later phases add trade voting, Web Push, Tuesday recaps, Yahoo OAuth, and an unofficial public ESPN read. Provider differences stay in adapters. React uses normalized league, team, and matchup models.
 
 Sleeper raw schemas, fixed-origin HTTP client, mapper and request-scoped FantasyProvider adapter are isolated in `src/lib/fantasy/providers/sleeper`. React sees only normalized domain/database models. Zod validates every external response before mapping. League/user snowflakes remain strings. Requests have eight-second timeouts, no shared cache, no redirects and no retry storms. Failures have safe messages, never fake-data fallback. Request-local promises deduplicate league, users and state calls. Only league, users, rosters, NFL state and weekly matchups are fetched.
 

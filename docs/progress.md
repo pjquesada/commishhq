@@ -12,11 +12,11 @@
 
 ## Current
 
-Final security review, documentation, and draft pull request.
+Draft pull request from `full-app-build`.
 
 ## Remaining
 
-- Final security review, documentation, draft pull request
+- Draft pull request. Do not merge.
 
 ## Decisions
 

@@ -1,8 +1,8 @@
-# CommishHQ — Phase 2
+# CommishHQ
 
-Fantasy football commissioner workspace. Phase 2 adds Sleeper import, standings, current-week matchups and commissioner-approved team identity to the existing Next.js, Supabase, PWA and Cloudflare foundation.
+Fantasy football commissioner workspace. It connects an existing league, runs secure trade votes, and publishes Tuesday weekly recaps. Sleeper, Yahoo, and ESPN remain the systems of record for lineups, waivers, and scoring.
 
-**Not implemented:** Phase 3 secure trade voting, Phase 4 Web Push, Phase 5 Tuesday weekly recaps, Yahoo integration, ESPN integration. No ballots, SMS, scheduled jobs or AI generation.
+The beta on `full-app-build` includes Sleeper import, commissioner-approved team claims, trade voting, Web Push, weekly recaps, Yahoo OAuth, and an unofficial public ESPN read. Private ESPN sessions stay off unless `ENABLE_ESPN_EXPERIMENTAL=true`. See [progress](docs/progress.md), [security](docs/security.md), and [deployment](docs/deployment.md).
 
 ## Local setup
 
@@ -36,6 +36,11 @@ Apply the committed migrations in order:
 1. `20260923195759_foundation.sql`: unchanged Phase 1 foundation.
 2. `20260923224500_phase2_sleeper.sql`: original Phase 2 tables and columns, preserved unchanged.
 3. `20260923235640_sleeper_import_claims.sql`: upgrades existing data to transactional sync and claims, provider manager links, indexes and RLS. Existing memberships, approved claims and scores are retained.
+4. `20261002190000_phase3_trade_voting.sql`: trade votes, anonymous ballots, and audit events.
+5. `20261002200000_phase4_web_push.sql`: push subscriptions and the notification outbox.
+6. `20261002220000_phase5_weekly_recaps.sql`: recap rows, vocabulary cooldown, and bench facts.
+7. `20261002230000_phase6_yahoo.sql`: encrypted provider credentials and Yahoo sync.
+8. `20261002240000_phase7_espn.sql`: ESPN sync. Apply in this order. Do not edit a migration that may already be applied.
 
 If the earlier Phase 2 app is deployed, pause its traffic during the upgrade, apply pending migrations, then deploy this app version before reopening traffic. The upgrade renames columns and retires the earlier claim-review RPC.
 
@@ -99,4 +104,4 @@ No paid dependency was added. Sync is manual with bounded/deduplicated requests.
 - `tests/`: provider, standings, auth, sync and database security tests
 - `.github/workflows/ci.yml`: checks on push and PR
 
-Repository: [pjquesada/commishhq](https://github.com/pjquesada/commishhq). Phase 2 is proposed from `phase-2-sleeper-import` through a draft PR, not merged automatically.
+Repository: [pjquesada/commishhq](https://github.com/pjquesada/commishhq). The beta is proposed from `full-app-build` through a draft pull request. It is not merged automatically.
