@@ -12,11 +12,11 @@
 
 ## Current
 
-Draft pull request from `full-app-build`.
+Draft pull request: https://github.com/pjquesada/commishhq/pull/2
 
 ## Remaining
 
-- Draft pull request. Do not merge.
+- Manual Supabase, Cloudflare, VAPID, Yahoo, and ESPN setup. Do not merge the draft.
 
 ## Decisions
 
