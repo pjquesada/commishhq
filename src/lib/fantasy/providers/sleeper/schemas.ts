@@ -53,6 +53,8 @@ export const sleeperMatchupSchema = z.object({
   matchup_id: z.number().int().nonnegative().nullable(),
   points: z.number().finite().nullish(),
   custom_points: z.number().finite().nullish(),
+  starters: z.array(z.string()).max(30).optional(),
+  players_points: z.record(z.string(), z.number().finite()).optional(),
 });
 export type SleeperLeague = z.infer<typeof sleeperLeagueSchema>;
 export type SleeperUser = z.infer<typeof sleeperUserSchema>;

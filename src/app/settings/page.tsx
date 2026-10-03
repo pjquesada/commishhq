@@ -4,6 +4,7 @@ import { providerAvailability } from "@/lib/fantasy/provider";
 import { listLeagues } from "@/lib/leagues/queries";
 import { createClient } from "@/lib/supabase/server";
 import { VotePreferencesForm } from "@/components/trade-actions";
+import { RecapSettingsForm } from "@/components/recap-settings";
 import { PushSettings } from "@/components/push-settings";
 import { revokePushSubscription } from "@/app/push/actions";
 import Link from "next/link";
@@ -30,16 +31,32 @@ export default async function Settings({
     )
     .safeParse((await client.rpc("my_push_devices")).data);
   const devices = deviceRows.success ? deviceRows.data : [];
-  let preferences = { participants_may_vote: false, default_vote_hours: 48 };
+  let preferences = {
+    participants_may_vote: false,
+    default_vote_hours: 48,
+    trash_talk: "normal",
+    profanity: "clean",
+    adult_humor: false,
+    meme_level: "medium",
+    recap_length: "normal",
+  };
   let managerPush: { label: string; push_enabled: boolean }[] = [];
   if (selected && selected.commissioner_id === user.id) {
     const loaded = await client
       .from("league_preferences")
-      .select("participants_may_vote,default_vote_hours")
+      .select("participants_may_vote,default_vote_hours,trash_talk,profanity,adult_humor,meme_level,recap_length")
       .eq("league_id", selected.id)
       .maybeSingle();
     const parsed = z
-      .object({ participants_may_vote: z.boolean(), default_vote_hours: z.number() })
+      .object({
+        participants_may_vote: z.boolean(),
+        default_vote_hours: z.number(),
+        trash_talk: z.enum(["light", "normal", "savage"]),
+        profanity: z.enum(["clean", "some", "uncensored"]),
+        adult_humor: z.boolean(),
+        meme_level: z.enum(["low", "medium", "brainrot"]),
+        recap_length: z.enum(["quick", "normal", "full"]),
+      })
       .safeParse(loaded.data);
     if (parsed.success) preferences = parsed.data;
     const status = z
@@ -106,6 +123,16 @@ export default async function Settings({
             leagueId={selected.id}
             participantsMayVote={preferences.participants_may_vote}
             defaultVoteHours={preferences.default_vote_hours}
+          />
+          <h3>Recap style</h3>
+          <RecapSettingsForm
+            leagueId={selected.id}
+            trashTalk={preferences.trash_talk}
+            profanity={preferences.profanity}
+            adultHumor={preferences.adult_humor}
+            memeLevel={preferences.meme_level}
+            length={preferences.recap_length}
+            timezone={selected.timezone}
           />
           <h3>Managers</h3>
           <ul>

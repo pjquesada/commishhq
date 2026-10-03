@@ -52,6 +52,12 @@ export class SleeperAdapter implements FantasyProvider {
   getTeams() {
     return (this.teamsPromise ??= this.loadTeams());
   }
+  async getMatchupHistory(throughWeek: number) {
+    const last = Math.min(Math.max(throughWeek, 1), 18);
+    const games: Awaited<ReturnType<SleeperAdapter["getMatchups"]>> = [];
+    for (let week = 1; week < last; week += 1) games.push(...(await this.getMatchups(week)));
+    return games;
+  }
   async getMatchups(week: number) {
     const [league, state, rows, teams] = await Promise.all([
       this.league(),
@@ -82,6 +88,11 @@ export class SleeperAdapter implements FantasyProvider {
       standings: true,
       transactions: false,
       projections: false,
+      publicLeagueAccess: true,
+      oauth: false,
+      matchupHistory: true,
+      futureDraftPicks: false,
+      commissionerActions: false,
     };
   }
 }

@@ -7,6 +7,7 @@ import { adminConfigured } from "@/lib/supabase/admin";
 import { SyncForm } from "@/components/league-forms";
 import { ClaimLink } from "@/components/claim-link";
 import { LeagueNotice } from "@/components/league-notice";
+import { leagueHighlights } from "@/lib/recaps/queries";
 export const metadata = { title: "League" };
 export default async function LeaguePage({
   params,
@@ -46,6 +47,7 @@ export default async function LeaguePage({
     return true;
   });
   const commissioner = user.id === league.commissioner_id;
+  const highlights = await leagueHighlights(league.id);
   return (
     <>
       <Link href="/" className="back-link">
@@ -65,6 +67,20 @@ export default async function LeaguePage({
         </div>
         <span className="pill">Sync: {league.sync_status}</span>
       </div>
+      {(highlights.voteId || highlights.week) && (
+        <p>
+          {highlights.voteId && (
+            <Link href={`/leagues/${league.id}/trades/${highlights.voteId}`}>
+              A trade vote needs attention.{" "}
+            </Link>
+          )}
+          {highlights.week && (
+            <Link href={`/leagues/${league.id}/recaps/${highlights.week}`}>
+              Latest recap: Week {highlights.week}
+            </Link>
+          )}
+        </p>
+      )}
       {league.sync_status !== "complete" && (
         <p className="sync-warning" role="status">
           {league.sync_status === "failed"

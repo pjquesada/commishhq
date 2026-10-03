@@ -43,6 +43,10 @@ export const matchupSchema = z.object({
       z.object({
         teamId: z.string().min(1),
         points: z.number().finite().nullable(),
+        starterPoints: z.number().finite().nullable().optional(),
+        benchPoints: z.number().finite().nullable().optional(),
+        benchBeatStarter: z.boolean().optional(),
+        benchWouldFlip: z.boolean().optional(),
       }),
     )
     .min(1),
@@ -65,4 +69,9 @@ export interface ProviderCapabilities {
   standings: boolean;
   transactions: boolean;
   projections: boolean;
+  publicLeagueAccess: boolean;
+  oauth: boolean;
+  matchupHistory: boolean;
+  futureDraftPicks: boolean;
+  commissionerActions: boolean;
 }

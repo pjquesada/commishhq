@@ -5,6 +5,7 @@ export const leagueRowSchema = z.object({
   name: z.string(),
   season: z.number(),
   commissioner_id: uuidSchema,
+  timezone: z.string().default("America/New_York"),
   current_week: z.number().nullable(),
   sync_status: z.enum(["pending", "syncing", "complete", "failed"]),
   last_synced_at: z.string().nullable(),
@@ -79,6 +80,9 @@ export function databaseError(message: string): LeagueError {
     "Eligibility is frozen",
     "Invalid subscription",
     "Subscription not found",
+    "Invalid recap settings",
+    "Invalid recap",
+    "Recap not found",
   ];
   if (known.includes(message)) return new LeagueError(message + ".");
   if (message.includes("one_active_claim_per_user"))

@@ -60,10 +60,14 @@ export async function syncSleeperLeague(
         ? Promise.resolve([])
         : adapter.getMatchups(league.currentWeek),
     ]);
+    const history =
+      league.currentWeek && adapter.capabilities?.().matchupHistory && adapter.getMatchupHistory
+        ? await adapter.getMatchupHistory(league.currentWeek)
+        : [];
     const result = await admin.rpc("finish_sleeper_sync", {
       actor: user.id,
       run: lease.run_id,
-      snapshot: { league, teams, managers, matchups },
+      snapshot: { league, teams, managers, matchups, history },
     });
     if (result.error) throw databaseError(result.error.message);
     leagueLog("sync_complete", lease.league_id);

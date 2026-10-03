@@ -11,5 +11,5 @@ if (!match) {
   process.exit(1);
 }
 const worker = match[1];
-const scheduled = `${worker}.scheduled=async function(e,t,n){let r=new Request("https://commishhq.internal/api/internal/scheduler",{method:"POST",headers:{authorization:"Bearer "+(t.CRON_SECRET||"")}});n.waitUntil(${worker}.fetch(r,t,n))};`;
+const scheduled = `${worker}.scheduled=async function(e,t,n){globalThis.AI=t.AI||null;let r=new Request("https://commishhq.internal/api/internal/scheduler",{method:"POST",headers:{authorization:"Bearer "+(t.CRON_SECRET||"")}});n.waitUntil(${worker}.fetch(r,t,n))};`;
 writeFileSync(file, source.replace(match[0], `var ${worker}=${match[2]}??{};${scheduled}export{${worker} as default};`));

@@ -13,6 +13,7 @@ import type {
   SleeperState,
   SleeperMatchup,
 } from "./schemas";
+import { benchSummary } from "../../bench";
 import { ProviderError } from "./client";
 export function score(whole: number, hundredths = 0): number {
   return Math.round((whole + hundredths / 100) * 100) / 100;
@@ -125,10 +126,22 @@ export function mapMatchups(
       leagueId: league.league_id,
       week,
       status: final ? "final" : scheduled ? "scheduled" : "live",
-      scores: group.map((row) => ({
-        teamId: String(row.roster_id),
-        points: row.custom_points ?? row.points ?? null,
-      })),
+      scores: group.map((row) => {
+        const points = row.custom_points ?? row.points ?? null;
+        const opponent = group.find((other) => other.roster_id !== row.roster_id);
+        const opponentPoints = opponent
+          ? (opponent.custom_points ?? opponent.points ?? null)
+          : null;
+        const bench =
+          row.starters && row.players_points && points !== null
+            ? benchSummary(row.starters, row.players_points, points, opponentPoints)
+            : null;
+        return {
+          teamId: String(row.roster_id),
+          points,
+          ...(bench ?? {}),
+        };
+      }),
     });
   });
 }

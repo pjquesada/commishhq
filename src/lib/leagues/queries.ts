@@ -18,7 +18,7 @@ export async function listLeagues() {
   const { data, error } = await client
     .from("leagues")
     .select(
-      "id,name,season,commissioner_id,current_week,sync_status,last_synced_at",
+      "id,name,season,commissioner_id,timezone,current_week,sync_status,last_synced_at",
     )
     .order("created_at", { ascending: false });
   if (error) throw databaseError(error.message);

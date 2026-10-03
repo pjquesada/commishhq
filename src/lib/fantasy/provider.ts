@@ -15,6 +15,7 @@ export interface FantasyProvider {
   getTeams(): Promise<Team[]>;
   getManagers?(): Promise<import("./types").ProviderManager[]>;
   getMatchups(week: number): Promise<Matchup[]>;
+  getMatchupHistory?(throughWeek: number): Promise<Matchup[]>;
   getTransactions?(week?: number): Promise<Transaction[]>;
   getLeagueSettings(): Promise<LeagueSettings>;
   capabilities(): ProviderCapabilities;
